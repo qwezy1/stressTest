@@ -1,43 +1,65 @@
 package main
 
 import (
+	"fmt"
 	"math"
+	"math/rand"
 	"runtime"
+	"time"
 )
 
-func main() {
-	for i := 0; i < runtime.NumCPU(); i++ {
-		go cpuWorker()
+func cpuWorker(id int) {
+	b, c, g, v := 999999999999999999.0, 999999999999999999.0, 999999999999999999.0, 999999999999999999.0
+
+	var complexCalc func(x float64, depth int) float64
+	complexCalc = func(x float64, depth int) float64 {
+		if depth == 0 {
+			return math.Cos(x) + math.Sqrt(x)
+		}
+		return complexCalc(math.Sin(x)+math.Pow(x, 1.01), depth-1)
 	}
 
-	go memWorker()
-
-	select {}
-}
-
-func cpuWorker() {
-	var b, c, g, v float64
-	b, c, g, v = 999999999999999999, 999999999999999999, 999999999999999999, 999999999999999999
-
 	for {
-
-		g = g + b + c
-		g = math.Sqrt(g)
-		v = math.Cos(v)
+		g += b + c
+		v += complexCalc(v+b, 5)
 		b += c
-
-		_ = math.Pow(v, 2.71828)
-		_ = math.Sin(g)
+		_ = math.Log(math.Abs(g) + 1.0)
+		_ = math.Sqrt(math.Abs(v) + 1.0)
 	}
 }
 
 func memWorker() {
-	mem := make([][]float64, 0)
+	mem := make([][][]float64, 0)
 	for {
-		arr := make([]float64, 1000000)
+		size := 200 + rand.Intn(800)
+		arr := make([][]float64, size)
 		for i := range arr {
-			arr[i] = float64(i) * 0.123456
+			arr[i] = make([]float64, size)
+			for j := range arr[i] {
+				arr[i][j] = float64(i*j) * 0.123456
+			}
 		}
 		mem = append(mem, arr)
 	}
+}
+
+func main() {
+	rand.Seed(time.Now().UnixNano())
+
+	// процессор
+	for i := 0; i < runtime.NumCPU(); i++ {
+		go cpuWorker(i)
+	}
+
+	// память
+	go memWorker()
+
+	go func() {
+		for {
+			fmt.Println("Программа работает...")
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
+	select {} // тут блокируется поток
 }
